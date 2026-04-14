@@ -15,10 +15,10 @@ contract FixedVaultTest is Test {
 
     function test_Deposit() public {
         vm.prank(user);
-        uint256 userBalanceBefore = user.balance;
-        uint256 contractBalanceBefore = address(vault).balance;
-        assertEq(userBalanceBefore, 10 ether);
-        assertEq(contractBalanceBefore, 0 ether);
+        uint256 userBalanceBeforeDeposit = user.balance;
+        uint256 contractBalanceBeforeDeposit = address(vault).balance;
+        assertEq(userBalanceBeforeDeposit, 10 ether);
+        assertEq(contractBalanceBeforeDeposit, 0 ether);
 
         vault.deposit{value: 1 ether}();
         
